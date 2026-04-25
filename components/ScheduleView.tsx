@@ -103,13 +103,14 @@ export function ScheduleView({ state }: { state: RunState }) {
   });
 
   const allItems: ContentEntryWithFinal[] = useMemo(() => {
-    return merged.map((m) => ({
-      ...m,
-      // BulkPublish needs ContentItem-shaped entries; supply defaults if not yet drafted.
-      draft: m.draft ?? "",
-      final: m.final ?? "",
-      lint: m.lint ?? { length_ok: true, cta_ok: true, voice_ok: null, issues: [] },
-    }));
+    return merged
+      .filter((m) => !!m.final && m.final.length > 0)
+      .map((m) => ({
+        ...m,
+        draft: m.draft ?? "",
+        final: m.final ?? "",
+        lint: m.lint ?? { length_ok: true, cta_ok: true, voice_ok: null, issues: [] },
+      }));
   }, [merged]);
 
   if (!grid) {
@@ -124,9 +125,30 @@ export function ScheduleView({ state }: { state: RunState }) {
 
   return (
     <div className="grid gap-4">
-      <BulkPublish runId={state.id} items={allItems} />
-
-      <div className="text-xs font-mono text-muted-foreground">{headerInfo.join("  ·  ")}</div>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="text-xs font-mono text-muted-foreground">{headerInfo.join("  ·  ")}</div>
+        {allItems.length > 0 && (
+          <details className="group text-xs">
+            <summary className="cursor-pointer rounded-md border border-border bg-card hover:border-accent/60 px-2.5 py-1 text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 list-none [&::-webkit-details-marker]:hidden">
+              <span>schedule entire calendar</span>
+              <span className="text-[10px] opacity-60 group-open:rotate-180 transition-transform">▾</span>
+            </summary>
+            <div className="mt-2 max-w-xl">
+              <BulkPublish
+                runId={state.id}
+                items={allItems}
+                actionLabel="schedule all"
+                forceSchedule
+                hideScheduleToggle
+                compact
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Queues every post on Zernio at its scheduled calendar date instead of publishing now.
+              </p>
+            </div>
+          </details>
+        )}
+      </div>
 
       {/* Calendar grid */}
       <div className="rounded-lg border border-border bg-card overflow-hidden">
@@ -220,6 +242,21 @@ function SelectedDay({
     return [...m.values()];
   }, [items]);
 
+  // Items that have a final draft can be published. Anything still pre-draft
+  // is filtered out of the bulk action to avoid sending empty content.
+  const publishable: ContentEntryWithFinal[] = useMemo(() => {
+    return items
+      .filter((it) => !!it.final && it.final.length > 0)
+      .map((it) => ({
+        ...it,
+        draft: it.draft ?? "",
+        final: it.final ?? "",
+        lint: it.lint ?? { length_ok: true, cta_ok: true, voice_ok: null, issues: [] },
+      }));
+  }, [items]);
+
+  const dateLabel = formatDayLabel(iso);
+
   return (
     <section className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -227,9 +264,7 @@ function SelectedDay({
           <div className="text-xs font-mono text-muted-foreground">{iso}</div>
           <div className="font-semibold tracking-tight">
             {occasion ? (
-              <>
-                <span className="text-warning">🌙 {occasion}</span>
-              </>
+              <span className="text-warning">🌙 {occasion}</span>
             ) : (
               "Posting day"
             )}
@@ -241,6 +276,17 @@ function SelectedDay({
         </div>
       </div>
 
+      {publishable.length > 0 && (
+        <div className="mt-3">
+          <BulkPublish
+            runId={runId}
+            items={publishable}
+            actionLabel={`publish all on ${dateLabel}`}
+            compact
+          />
+        </div>
+      )}
+
       <div className="mt-4 grid gap-5">
         {groups.map((group, gi) => (
           <DayIdea key={gi} runId={runId} group={group} />
@@ -248,6 +294,12 @@ function SelectedDay({
       </div>
     </section>
   );
+}
+
+function formatDayLabel(iso: string): string {
+  // "2026-04-30" → "Apr 30"
+  const d = isoToDate(iso);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 function DayIdea({ runId, group }: { runId: string; group: ScheduleEntry[] }) {

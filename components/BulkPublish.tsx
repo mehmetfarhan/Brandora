@@ -13,12 +13,34 @@ interface ProgressEntry {
   postId?: string;
 }
 
-export function BulkPublish({ runId, items }: { runId: string; items: ContentItem[] }) {
+export interface BulkPublishProps {
+  runId: string;
+  items: ContentItem[];
+  /** Override the action label, e.g. "publish all on Apr 30" or
+   * "schedule entire calendar". Defaults to "publish all (N)". */
+  actionLabel?: string;
+  /** Hide the schedule-per-calendar-date checkbox (when caller has already
+   * decided whether to schedule). */
+  hideScheduleToggle?: boolean;
+  /** Force scheduleFromCalendar regardless of toggle state. */
+  forceSchedule?: boolean;
+  /** Compact rendering (used inside a day panel). */
+  compact?: boolean;
+}
+
+export function BulkPublish({
+  runId,
+  items,
+  actionLabel,
+  hideScheduleToggle,
+  forceSchedule,
+  compact,
+}: BulkPublishProps) {
   const [accounts, setAccounts] = useState<ZernioAccount[] | null>(null);
   const [accountsError, setAccountsError] = useState<string | null>(null);
   const [progress, setProgress] = useState<ProgressEntry[]>([]);
   const [publishing, setPublishing] = useState(false);
-  const [scheduleFromCalendar, setScheduleFromCalendar] = useState(false);
+  const [scheduleFromCalendar, setScheduleFromCalendar] = useState(!!forceSchedule);
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +59,11 @@ export function BulkPublish({ runId, items }: { runId: string; items: ContentIte
       cancelled = true;
     };
   }, []);
+
+  // Reset progress when the items list identity changes (e.g. picking a new day).
+  useEffect(() => {
+    setProgress([]);
+  }, [items]);
 
   // Identify which items map to a connected, enabled account.
   const eligible: { item: ContentItem; platform: string }[] = [];
@@ -62,6 +89,7 @@ export function BulkPublish({ runId, items }: { runId: string; items: ContentIte
   async function publishAll() {
     if (publishing) return;
     setPublishing(true);
+    const useSchedule = forceSchedule || scheduleFromCalendar;
     const initial: ProgressEntry[] = [
       ...eligible.map((e) => ({ id: e.item.id, channel: e.item.channel, status: "queued" as const })),
       ...skipped.map((s) => ({
@@ -84,7 +112,7 @@ export function BulkPublish({ runId, items }: { runId: string; items: ContentIte
           body: JSON.stringify({
             runId,
             itemId: item.id,
-            publishNow: !scheduleFromCalendar,
+            publishNow: !useSchedule,
           }),
         });
         const body = (await res.json().catch(() => ({}))) as {
@@ -132,8 +160,20 @@ export function BulkPublish({ runId, items }: { runId: string; items: ContentIte
   const ok = progress.filter((p) => p.status === "ok").length;
   const errs = progress.filter((p) => p.status === "error").length;
 
+  const labelText = actionLabel
+    ? actionLabel.includes("(") || !actionLabel.includes("…")
+      ? actionLabel.replace(/\(\d+\)\s*$/, "").trim() + ` (${eligible.length})`
+      : actionLabel
+    : `publish all (${eligible.length})`;
+
   return (
-    <div className="rounded-lg border border-border bg-muted/20 p-3 flex flex-wrap items-center gap-3">
+    <div
+      className={[
+        "rounded-lg border border-border bg-muted/20",
+        compact ? "p-2.5" : "p-3",
+        "flex flex-wrap items-center gap-3",
+      ].join(" ")}
+    >
       <div className="text-sm">
         <span className="font-medium">{eligible.length}</span> ready
         {skipped.length > 0 && (
@@ -156,21 +196,27 @@ export function BulkPublish({ runId, items }: { runId: string; items: ContentIte
           </>
         )}
       </div>
-      <label className="text-xs text-muted-foreground inline-flex items-center gap-1.5 ml-auto">
-        <input
-          type="checkbox"
-          checked={scheduleFromCalendar}
-          onChange={(e) => setScheduleFromCalendar(e.target.checked)}
-          className="accent-accent"
-        />
-        schedule per calendar date (instead of publish now)
-      </label>
+      {!hideScheduleToggle && (
+        <label className="text-xs text-muted-foreground inline-flex items-center gap-1.5 ml-auto">
+          <input
+            type="checkbox"
+            checked={scheduleFromCalendar}
+            onChange={(e) => setScheduleFromCalendar(e.target.checked)}
+            className="accent-accent"
+          />
+          schedule for calendar date (instead of publish now)
+        </label>
+      )}
       <button
         onClick={publishAll}
         disabled={publishing || eligible.length === 0}
-        className="rounded-md bg-accent text-accent-foreground text-sm font-semibold px-3 py-1.5 disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110"
+        className={[
+          "rounded-md bg-accent text-accent-foreground text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110",
+          compact ? "px-2.5 py-1" : "px-3 py-1.5",
+          hideScheduleToggle ? "ml-auto" : "",
+        ].join(" ")}
       >
-        {publishing ? "publishing…" : `publish all (${eligible.length})`}
+        {publishing ? "publishing…" : labelText}
       </button>
       {progress.length > 0 && (
         <ul className="basis-full mt-2 grid sm:grid-cols-2 gap-1 text-xs font-mono">
