@@ -3,6 +3,7 @@
 // task started by POST /api/run.
 
 import { addUsage } from "./anthropic";
+import { downloadAssets } from "./assets";
 import { runResearch } from "./stages/research";
 import { runStrategy } from "./stages/strategy";
 import { runCalendar } from "./stages/calendar";
@@ -51,6 +52,30 @@ export async function runPipeline(state: RunState): Promise<void> {
       state.tokens = addUsage(state.tokens, research.usage);
       setStage(state, "research", { output: research.output });
       startTokens(state);
+
+      // Download brand assets the agent identified (logos, hero, products, …)
+      const assets = research.output.business?.assets ?? [];
+      if (assets.length > 0) {
+        emit(state.id, {
+          type: "stage_progress",
+          stage: "research",
+          message: `downloading ${assets.length} brand asset${assets.length === 1 ? "" : "s"}`,
+          t: Date.now(),
+        });
+        const saved = await downloadAssets(state.id, assets, (s, i) => {
+          emit(state.id, {
+            type: "stage_progress",
+            stage: "research",
+            message: s.error
+              ? `asset ${i + 1}/${assets.length} ${s.kind ?? ""} failed: ${s.error.slice(0, 60)}`
+              : `asset ${i + 1}/${assets.length} ${s.kind ?? ""} saved (${(s.bytes ?? 0) / 1024 | 0} KB)`,
+            t: Date.now(),
+          });
+        });
+        const dossier = research.output;
+        dossier.business.assets = saved;
+        setStage(state, "research", { output: dossier });
+      }
 
       // Fact-check (research-specific extra pass)
       emit(state.id, { type: "stage_progress", stage: "research", message: "fact-checking sources", t: Date.now() });

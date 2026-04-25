@@ -135,6 +135,9 @@ function ResearchView({ state }: { state: RunState }) {
           ))}
         </>
       ) : null}
+      {d.business?.assets && d.business.assets.length > 0 ? (
+        <BrandAssetsGallery state={state} assets={d.business.assets} />
+      ) : null}
       {d.sources?.length ? (
         <>
           <h2>Sources</h2>
@@ -155,6 +158,103 @@ function ResearchView({ state }: { state: RunState }) {
         </>
       ) : null}
     </div>
+  );
+}
+
+function BrandAssetsGallery({
+  state,
+  assets,
+}: {
+  state: RunState;
+  assets: NonNullable<ResearchOutput["business"]["assets"]>;
+}) {
+  const ok = assets.filter((a) => a.filename && !a.error);
+  const failed = assets.filter((a) => !a.filename || a.error);
+
+  function kindOrder(k: string | undefined): number {
+    const order = ["logo", "icon", "hero", "product", "team", "social", "ad"];
+    const idx = order.indexOf(k ?? "");
+    return idx === -1 ? 99 : idx;
+  }
+  const sorted = [...ok].sort((a, b) => kindOrder(a.kind) - kindOrder(b.kind));
+
+  return (
+    <>
+      <h2>Brand assets</h2>
+      <p className="text-sm text-muted-foreground -mt-1">
+        {ok.length} downloaded · {failed.length > 0 ? `${failed.length} skipped` : "ready to reuse on posts or as references for image/video generation"}
+      </p>
+      <div className="not-prose mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {sorted.map((a, i) => (
+          <BrandAssetCard key={`${a.filename}-${i}`} runId={state.id} asset={a} />
+        ))}
+      </div>
+      {failed.length > 0 ? (
+        <details className="mt-3 not-prose">
+          <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+            {failed.length} assets couldn&rsquo;t be saved (403, oversize, etc.)
+          </summary>
+          <ul className="mt-2 text-xs text-muted-foreground space-y-1 font-mono">
+            {failed.map((a, i) => (
+              <li key={i} className="truncate">
+                <span className="text-warning mr-2">{a.kind ?? "?"}</span>
+                <span className="text-foreground">{a.url}</span> — {a.error}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+    </>
+  );
+}
+
+function BrandAssetCard({
+  runId,
+  asset,
+}: {
+  runId: string;
+  asset: NonNullable<ResearchOutput["business"]["assets"]>[number];
+}) {
+  const src = asset.publicPath ?? `/api/run/${runId}/assets/${asset.filename}`;
+  const isVideo = (asset.contentType ?? "").startsWith("video/");
+  const sizeKb = asset.bytes ? Math.round(asset.bytes / 1024) : null;
+  return (
+    <a
+      href={src}
+      target="_blank"
+      rel="noreferrer"
+      className="group rounded-lg border border-border bg-muted/30 overflow-hidden hover:border-accent/60 transition-colors"
+      title={asset.description ?? asset.url}
+    >
+      <div className="aspect-square bg-card flex items-center justify-center overflow-hidden">
+        {isVideo ? (
+          // eslint-disable-next-line jsx-a11y/media-has-caption
+          <video src={src} className="max-h-full max-w-full object-contain" muted playsInline />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={src}
+            alt={asset.description ?? asset.kind ?? "brand asset"}
+            className="max-h-full max-w-full object-contain"
+          />
+        )}
+      </div>
+      <div className="px-3 py-2 text-xs">
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-mono text-muted-foreground uppercase tracking-wide text-[10px]">
+            {asset.kind ?? "asset"}
+          </span>
+          {sizeKb !== null && (
+            <span className="font-mono text-[10px] text-muted-foreground">{sizeKb} KB</span>
+          )}
+        </div>
+        {asset.description ? (
+          <div className="mt-1 text-foreground line-clamp-2 group-hover:text-accent">
+            {asset.description}
+          </div>
+        ) : null}
+      </div>
+    </a>
   );
 }
 

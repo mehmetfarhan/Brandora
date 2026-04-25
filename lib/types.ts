@@ -10,6 +10,25 @@ export interface BusinessInput {
   calendar_days?: number;
 }
 
+export interface BrandAsset {
+  /** Source URL (where it was found). */
+  url: string;
+  /** Best-guess kind. The downloader leaves this untouched. */
+  kind?: "logo" | "hero" | "product" | "team" | "social" | "icon" | "ad" | string;
+  /** Short caption from research (e.g. "primary white-on-black logo"). */
+  description?: string;
+  /** Local filename inside .runs/<id>/assets/ — filled after download. */
+  filename?: string;
+  /** Public path served by /api/run/[id]/assets/<filename>. */
+  publicPath?: string;
+  /** MIME content-type as reported by the response. */
+  contentType?: string;
+  /** Byte size on disk. */
+  bytes?: number;
+  /** Failure message if the download couldn't be saved. */
+  error?: string;
+}
+
 export interface ResearchOutput {
   business: {
     name: string;
@@ -19,6 +38,8 @@ export interface ResearchOutput {
     stage: "early" | "growth" | "enterprise" | string;
     /** ISO English country name (e.g. "Jordan", "Saudi Arabia", "United States"). */
     country?: string;
+    /** Brand assets the agent identified and downloaded for reuse / generation. */
+    assets?: BrandAsset[];
   };
   niche: string;
   voice: { tone: string; do: string[]; dont: string[]; examples: string[] };

@@ -29,7 +29,11 @@ ${JSON.stringify(input, null, 2)}
 Schema:
 \`\`\`json
 {
-  "business":  {"name": str, "url": str, "summary": str, "offerings": [str], "stage": "early|growth|enterprise", "country": str},
+  "business":  {
+    "name": str, "url": str, "summary": str, "offerings": [str],
+    "stage": "early|growth|enterprise", "country": str,
+    "assets": [{"url": str, "kind": "logo|hero|product|team|social|icon|ad", "description": str}]
+  },
   "niche":     str,
   "voice":     {"tone": str, "do": [str], "dont": [str], "examples": [str]},
   "audience":  [{"persona": str, "pains": [str], "desires": [str], "where_they_are": [str]}],
@@ -38,6 +42,13 @@ Schema:
 \`\`\`
 
 For \`business.country\`: use the English country name where the business is based or operates primarily (e.g. "Jordan", "Saudi Arabia", "United States"). If unclear, infer from website TLD/contact info; if still unknown, leave the empty string.
+
+For \`business.assets\`: collect the brand's own visual assets so they can be reused in posts or as references. Be specific and avoid stock photos. Look for:
+- The official **logo** (check the site's HTML: \`<link rel="icon">\`, \`<link rel="apple-touch-icon">\`, \`<meta property="og:image">\`, plus any logo URL referenced in nav / footer / favicon).
+- A **hero** image from the homepage.
+- 1–3 representative **product** images from the catalog or features pages.
+- Brand profile pictures or banners from social media if exposed in HTML.
+Each asset entry: \`url\` MUST be a direct media URL (ending in .png/.jpg/.svg/.webp/.mp4 or returning an image content-type), \`kind\` from the enum, \`description\` short (e.g. "primary wordmark, white-on-black"). 4–10 assets is plenty; quality > quantity. Skip if you genuinely can't find any.
 
 Aim for 3–5 audience personas, 8–15 sources covering the business's site, social presence, and at least one third-party mention.
 Return only the JSON object.`;
