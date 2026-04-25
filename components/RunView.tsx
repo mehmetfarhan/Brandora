@@ -57,9 +57,10 @@ export function RunView({ initial }: { initial: RunState }) {
   });
   const [tab, setTab] = useState<Tab>("research");
 
-  // Refresh full state from disk after each `done` so artifacts reflect any
-  // late writes (e.g. critic revisions). Also refetch periodically while running
-  // for late SSE buffer drift.
+  // Refresh full state from disk periodically while the run is in flight as a
+  // catch-up safety net for SSE drift, and once more after `done` so artifacts
+  // reflect any late writes (e.g. critic revisions). Stop polling entirely
+  // once the run is complete — no need to keep hitting the server.
   useEffect(() => {
     let cancelled = false;
     async function pull() {
@@ -72,7 +73,13 @@ export function RunView({ initial }: { initial: RunState }) {
         // ignore
       }
     }
-    if (s.done) void pull();
+    if (s.done) {
+      // One final pull to settle, then stop.
+      void pull();
+      return () => {
+        cancelled = true;
+      };
+    }
     const id = setInterval(pull, 4000);
     return () => {
       cancelled = true;
