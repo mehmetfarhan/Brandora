@@ -68,7 +68,7 @@ export function BulkPublish({ runId, items }: { runId: string; items: ContentIte
         id: s.item.id,
         channel: s.item.channel,
         status: "skip" as const,
-        message: s.reason,
+        message: `not connected — ${s.reason}`,
       })),
     ];
     setProgress(initial);
@@ -135,8 +135,19 @@ export function BulkPublish({ runId, items }: { runId: string; items: ContentIte
   return (
     <div className="rounded-lg border border-border bg-muted/20 p-3 flex flex-wrap items-center gap-3">
       <div className="text-sm">
-        <span className="font-medium">{eligible.length}</span> ready,{" "}
-        <span className="text-muted-foreground">{skipped.length} skipped</span>
+        <span className="font-medium">{eligible.length}</span> ready
+        {skipped.length > 0 && (
+          <>
+            {" "}
+            ·{" "}
+            <span
+              className="text-muted-foreground"
+              title="Items whose channel has no connected Zernio account, or that aren't social channels (blog/email)."
+            >
+              {skipped.length} not connected
+            </span>
+          </>
+        )}
         {progress.length > 0 && (
           <>
             {" "}
