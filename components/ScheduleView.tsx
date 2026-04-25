@@ -326,6 +326,11 @@ function ChannelRendition({ runId, item }: { runId: string; item: ScheduleEntry 
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[11px] font-mono text-muted-foreground">{item.id}</span>
         <ChannelBadge channel={item.channel} />
+        {!hasDraft && (
+          <span className="text-[10px] font-mono uppercase tracking-wide text-muted-foreground/70 px-1.5 py-0.5 rounded border border-border/60">
+            brief
+          </span>
+        )}
         {item.lint && (
           <span className="ml-auto flex gap-1.5 text-[10px] font-mono">
             <span className={item.lint.length_ok ? "text-success" : "text-danger"}>len</span>
@@ -338,7 +343,12 @@ function ChannelRendition({ runId, item }: { runId: string; item: ScheduleEntry 
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.final ?? ""}</ReactMarkdown>
         </div>
       ) : (
-        <p className="mt-2 text-xs text-muted-foreground italic">{item.brief}</p>
+        <div className="mt-2">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
+            Plan brief — draft not generated yet
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground italic">{item.brief}</p>
+        </div>
       )}
       <div className="mt-3 flex items-center justify-between gap-2">
         {item.lint?.issues?.length ? (
@@ -346,8 +356,12 @@ function ChannelRendition({ runId, item }: { runId: string; item: ScheduleEntry 
         ) : (
           <span />
         )}
-        {hasDraft && (
+        {hasDraft ? (
           <PublishButton runId={runId} itemId={item.id} channel={item.channel} date={item.date} />
+        ) : (
+          <span className="text-[10px] text-muted-foreground/70 italic">
+            no publish — refresh page if run is complete
+          </span>
         )}
       </div>
     </div>
