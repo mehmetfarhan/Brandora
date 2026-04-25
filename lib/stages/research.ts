@@ -29,13 +29,15 @@ ${JSON.stringify(input, null, 2)}
 Schema:
 \`\`\`json
 {
-  "business":  {"name": str, "url": str, "summary": str, "offerings": [str], "stage": "early|growth|enterprise"},
+  "business":  {"name": str, "url": str, "summary": str, "offerings": [str], "stage": "early|growth|enterprise", "country": str},
   "niche":     str,
   "voice":     {"tone": str, "do": [str], "dont": [str], "examples": [str]},
   "audience":  [{"persona": str, "pains": [str], "desires": [str], "where_they_are": [str]}],
   "sources":   [{"url": str, "claim": str, "supported": null}]
 }
 \`\`\`
+
+For \`business.country\`: use the English country name where the business is based or operates primarily (e.g. "Jordan", "Saudi Arabia", "United States"). If unclear, infer from website TLD/contact info; if still unknown, leave the empty string.
 
 Aim for 3–5 audience personas, 8–15 sources covering the business's site, social presence, and at least one third-party mention.
 Return only the JSON object.`;

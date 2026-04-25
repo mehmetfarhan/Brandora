@@ -8,7 +8,7 @@ import { LogoutButton } from "./LogoutButton";
 import { StageTracker } from "./StageTracker";
 import type { RunEvent, RunState, StageName } from "@/lib/types";
 
-type Tab = "research" | "strategy" | "calendar" | "content" | "verification";
+type Tab = "research" | "strategy" | "schedule" | "verification";
 
 interface RunViewState {
   state: RunState;
@@ -119,8 +119,8 @@ export function RunView({ initial }: { initial: RunState }) {
     const stages: { key: StageName; tab: Tab }[] = [
       { key: "research", tab: "research" },
       { key: "strategy", tab: "strategy" },
-      { key: "calendar", tab: "calendar" },
-      { key: "content", tab: "content" },
+      { key: "calendar", tab: "schedule" },
+      { key: "content", tab: "schedule" },
     ];
     for (const st of stages) {
       if (s.state.stages[st.key]?.status === "running") {

@@ -17,6 +17,8 @@ export interface ResearchOutput {
     summary: string;
     offerings: string[];
     stage: "early" | "growth" | "enterprise" | string;
+    /** ISO English country name (e.g. "Jordan", "Saudi Arabia", "United States"). */
+    country?: string;
   };
   niche: string;
   voice: { tone: string; do: string[]; dont: string[]; examples: string[] };
@@ -43,9 +45,24 @@ export interface CalendarItem {
   brief: string;
   hook: string;
   cta: string;
+  /** Optional named day this item is anchored to (e.g. "Eid al-Fitr Day 1"). */
+  occasion?: string;
+  /** Stable group id shared across items that publish the same idea on the
+   * same date across multiple channels — UI groups by this. */
+  group_id?: string;
+}
+
+export interface ScheduleOccasion {
+  date: string; // YYYY-MM-DD
+  name: string;
+  notes?: string;
 }
 
 export interface CalendarOutput {
+  /** ISO English country name as detected by research (or empty). */
+  country?: string;
+  /** Holidays / culturally important days the calendar tried to align with. */
+  occasions?: ScheduleOccasion[];
   items: CalendarItem[];
 }
 

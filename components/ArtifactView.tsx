@@ -1,20 +1,14 @@
 "use client";
 
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { BulkPublish } from "./BulkPublish";
 import { ChannelBadge } from "./ChannelBadge";
-import { PublishButton } from "./PublishButton";
+import { ScheduleView } from "./ScheduleView";
 import type {
-  CalendarOutput,
-  ContentItem,
-  ContentOutput,
   RunState,
   ResearchOutput,
   StrategyOutput,
 } from "@/lib/types";
 
-type Tab = "research" | "strategy" | "calendar" | "content" | "verification";
+type Tab = "research" | "strategy" | "schedule" | "verification";
 
 export function ArtifactView({
   state,
@@ -28,11 +22,17 @@ export function ArtifactView({
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <div className="border-b border-border px-2 py-1.5 flex flex-wrap gap-1">
-        {(["research", "strategy", "calendar", "content", "verification"] as Tab[]).map((t) => {
+        {(["research", "strategy", "schedule", "verification"] as Tab[]).map((t) => {
           const status =
             t === "verification"
               ? state.verification.research_facts || state.verification.research
                 ? "ready"
+                : "pending"
+              : t === "schedule"
+              ? state.stages.calendar?.status === "completed" || state.stages.content?.status === "completed"
+                ? "ready"
+                : state.stages.calendar?.status === "running" || state.stages.content?.status === "running"
+                ? "running"
                 : "pending"
               : state.stages[t]?.status === "completed"
               ? "ready"
@@ -58,8 +58,7 @@ export function ArtifactView({
       <div className="p-5 sm:p-6 max-h-[68vh] overflow-y-auto">
         {tab === "research" && <ResearchView state={state} />}
         {tab === "strategy" && <StrategyView state={state} />}
-        {tab === "calendar" && <CalendarView state={state} />}
-        {tab === "content" && <ContentView state={state} />}
+        {tab === "schedule" && <ScheduleView state={state} />}
         {tab === "verification" && <VerificationView state={state} />}
       </div>
     </div>
@@ -195,81 +194,6 @@ function StrategyView({ state }: { state: RunState }) {
               </ul>
             ) : null}
           </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function CalendarView({ state }: { state: RunState }) {
-  const c = state.stages.calendar.output as CalendarOutput | undefined;
-  if (!c?.items?.length) return <Empty>Calendar hasn&rsquo;t been built yet.</Empty>;
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-muted-foreground border-b border-border">
-            <th className="py-2 pr-3 font-medium">#</th>
-            <th className="py-2 pr-3 font-medium">Date</th>
-            <th className="py-2 pr-3 font-medium">Channel</th>
-            <th className="py-2 pr-3 font-medium">Pillar</th>
-            <th className="py-2 pr-3 font-medium">Hook</th>
-          </tr>
-        </thead>
-        <tbody>
-          {c.items.map((it) => (
-            <tr key={it.id} className="border-b border-border/50">
-              <td className="py-2 pr-3 font-mono text-muted-foreground">{it.id}</td>
-              <td className="py-2 pr-3 font-mono">{it.date}</td>
-              <td className="py-2 pr-3"><ChannelBadge channel={it.channel} /></td>
-              <td className="py-2 pr-3 text-muted-foreground">{it.pillar}</td>
-              <td className="py-2 pr-3">{it.hook}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function ContentCard({ item, runId }: { item: ContentItem; runId: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-muted/20 p-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs font-mono text-muted-foreground">{item.id}</span>
-        <ChannelBadge channel={item.channel} />
-        <span className="text-xs font-mono text-muted-foreground">{item.date}</span>
-        <span className="text-xs text-muted-foreground">· {item.pillar}</span>
-        <span className="ml-auto flex gap-1.5 text-[10px] font-mono">
-          <span className={item.lint.length_ok ? "text-success" : "text-danger"}>len</span>
-          <span className={item.lint.cta_ok ? "text-success" : "text-danger"}>cta</span>
-        </span>
-      </div>
-      <h3 className="mt-2 font-medium">{item.hook}</h3>
-      <div className="prose-dark mt-2 text-sm">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.final}</ReactMarkdown>
-      </div>
-      <div className="mt-3 flex items-center justify-between gap-2">
-        {item.lint.issues.length ? (
-          <div className="text-[11px] text-warning">lint: {item.lint.issues.join(" · ")}</div>
-        ) : (
-          <span />
-        )}
-        <PublishButton runId={runId} itemId={item.id} channel={item.channel} />
-      </div>
-    </div>
-  );
-}
-
-function ContentView({ state }: { state: RunState }) {
-  const c = state.stages.content.output as ContentOutput | undefined;
-  if (!c?.items?.length) return <Empty>Content hasn&rsquo;t been generated yet.</Empty>;
-  return (
-    <div className="grid gap-4">
-      <BulkPublish runId={state.id} items={c.items} />
-      <div className="grid sm:grid-cols-2 gap-3">
-        {c.items.map((it) => (
-          <ContentCard key={it.id} item={it} runId={state.id} />
         ))}
       </div>
     </div>
