@@ -43,11 +43,25 @@ export interface ZernioPostBody {
   visibility?: "public" | "unlisted" | "private";
 }
 
+export interface ZernioPostPlatform {
+  platform: string;
+  accountId: string;
+  status: string;
+  postUrl?: string;
+  postId?: string;
+  errorMessage?: string;
+  errorCode?: string;
+}
+
 export interface ZernioPost {
   _id: string;
   status: string;
   scheduledFor?: string;
-  platforms: { platform: string; accountId: string; status: string; postUrl?: string }[];
+  platforms: ZernioPostPlatform[];
+}
+
+export async function getPost(postId: string): Promise<ZernioPost> {
+  return fetchZ<ZernioPost>(`/posts/${encodeURIComponent(postId)}`);
 }
 
 export class ZernioError extends Error {

@@ -17,6 +17,7 @@ import { z } from "zod";
 import {
   channelToZernioPlatform,
   createPost,
+  getPost,
   listAccounts,
   pickAccount,
   ZernioError,
@@ -105,7 +106,47 @@ export async function POST(req: Request) {
 
   try {
     const post = await createPost(body);
-    return NextResponse.json({ ok: true, postId: post._id, post });
+    // Zernio creates the post record synchronously but dispatches to each
+    // platform asynchronously. Poll the post a couple of times to see whether
+    // the platform dispatch succeeded so we can report a truthful status to
+    // the UI instead of a hopeful "ok" right after createPost.
+    let final = post;
+    for (let i = 0; i < 5; i++) {
+      const stuck = (final.platforms ?? []).every(
+        (p) => p.status === "pending" || p.status === "queued",
+      );
+      if (!stuck) break;
+      await new Promise((r) => setTimeout(r, 800));
+      try {
+        final = await getPost(post._id);
+      } catch {
+        break;
+      }
+    }
+    const platform = (final.platforms ?? [])[0];
+    const platformStatus = platform?.status;
+    if (platformStatus === "failed") {
+      return NextResponse.json(
+        {
+          ok: false,
+          postId: final._id,
+          status: final.status,
+          platformStatus,
+          error: platform?.errorMessage || `Zernio dispatch to ${platform?.platform} failed.`,
+          errorCode: platform?.errorCode,
+          post: final,
+        },
+        { status: 502 },
+      );
+    }
+    return NextResponse.json({
+      ok: true,
+      postId: final._id,
+      status: final.status,
+      platformStatus: platformStatus ?? null,
+      postUrl: platform?.postUrl ?? null,
+      post: final,
+    });
   } catch (e) {
     if (e instanceof ZernioError) {
       return NextResponse.json({ error: e.message, body: e.body }, { status: e.status });

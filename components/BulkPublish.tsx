@@ -124,6 +124,7 @@ export function BulkPublish({
         const body = (await res.json().catch(() => ({}))) as {
           ok?: boolean;
           postId?: string;
+          platformStatus?: string;
           error?: string;
         };
         if (!res.ok || !body.ok) {
@@ -137,7 +138,19 @@ export function BulkPublish({
           continue;
         }
         setProgress((p) =>
-          p.map((e) => (e.id === item.id ? { ...e, status: "ok", postId: body.postId } : e)),
+          p.map((e) =>
+            e.id === item.id
+              ? {
+                  ...e,
+                  status: "ok",
+                  postId: body.postId,
+                  message:
+                    body.platformStatus && body.platformStatus !== "published"
+                      ? `${body.platformStatus}`
+                      : undefined,
+                }
+              : e,
+          ),
         );
       } catch (e) {
         setProgress((p) =>

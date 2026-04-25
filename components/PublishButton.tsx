@@ -83,13 +83,22 @@ export function PublishButton({ runId, itemId, channel, date }: Props) {
       const body = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
         postId?: string;
+        platformStatus?: string;
         error?: string;
       };
       if (!res.ok || !body.ok) {
-        setState({ kind: "error", message: body.error || `HTTP ${res.status}` });
+        // Zernio rejected the platform dispatch — surface its exact reason.
+        const msg = body.error || `HTTP ${res.status}`;
+        setState({ kind: "error", message: msg });
         return;
       }
-      setState({ kind: "published", mode, postId: body.postId ?? "" });
+      // Honest about queued vs delivered: only call it "published" when Zernio
+      // actually confirmed delivery. Otherwise note that it's queued.
+      setState({
+        kind: "published",
+        mode: body.platformStatus === "published" ? "now" : mode,
+        postId: body.postId ?? "",
+      });
     } catch (e) {
       setState({ kind: "error", message: (e as Error).message });
     }
