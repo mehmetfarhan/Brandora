@@ -206,17 +206,38 @@ export function BusinessForm({ defaults }: { defaults?: { name?: string; url?: s
             )}
           </p>
         </div>
-        <label className="grid gap-2">
+        <div className="grid gap-2">
           <span className="text-sm font-medium">Calendar days</span>
-          <input
-            type="number"
-            min={3}
-            max={30}
-            value={days}
-            onChange={(e) => setDays(Math.max(3, Math.min(30, Number(e.target.value) || 14)))}
-            className="w-28 rounded-md bg-muted/50 border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-          />
-        </label>
+          <div className="inline-flex items-stretch rounded-md border border-border bg-muted/50 overflow-hidden focus-within:ring-2 focus-within:ring-accent">
+            <button
+              type="button"
+              onClick={() => setDays((d) => Math.max(3, d - 1))}
+              disabled={days <= 3}
+              aria-label="Decrease calendar days"
+              className="px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed border-r border-border transition-colors"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              min={3}
+              max={30}
+              value={days}
+              onChange={(e) => setDays(Math.max(3, Math.min(30, Number(e.target.value) || 14)))}
+              aria-label="Calendar days"
+              className="no-spin w-14 bg-transparent text-center px-1 py-2 text-sm focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => setDays((d) => Math.min(30, d + 1))}
+              disabled={days >= 30}
+              aria-label="Increase calendar days"
+              className="px-3 py-2 text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed border-l border-border transition-colors"
+            >
+              +
+            </button>
+          </div>
+        </div>
       </div>
 
       {error && (
