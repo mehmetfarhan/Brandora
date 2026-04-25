@@ -7,6 +7,11 @@ import { RUBRIC, REVISE } from "./rubrics";
 
 const MAX_ROUNDS = 2;
 const PASS_THRESHOLD = 75;
+/** Content has a stricter bar — half the rubric is "Content Quality" + "Self
+ * Verification" so the critic doubles as anti-AI-tell enforcement. */
+const PASS_THRESHOLD_BY_STAGE: Partial<Record<StageName, number>> = {
+  content: 80,
+};
 
 async function critique(stage: StageName, output: unknown): Promise<{ verdict: CriticVerdict; usage: TokenUsage }> {
   const system = [cacheBlock("You are a strict, fair auditor. Output only one JSON object.")];
@@ -53,12 +58,13 @@ export async function critic(
   let totalUsage: TokenUsage = { input: 0, output: 0, cache_read: 0, cache_create: 0 };
   const rounds: VerificationRecord["rounds"] = [];
 
+  const threshold = PASS_THRESHOLD_BY_STAGE[stage] ?? PASS_THRESHOLD;
   for (let r = 0; r <= MAX_ROUNDS; r++) {
     const c = await critique(stage, current);
     totalUsage = addUsage(totalUsage, c.usage);
     const v = c.verdict;
     const score = Number(v.score ?? 0);
-    const passed = Boolean(v.pass ?? score >= PASS_THRESHOLD);
+    const passed = Boolean(v.pass ?? score >= threshold);
     const issues = v.issues ?? [];
     rounds.push({ round: r, score, pass: passed, issues });
     onRound?.(r, score, passed);
