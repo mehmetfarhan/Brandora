@@ -78,13 +78,25 @@ const CHANNEL_RULES: Record<string, ChannelRule> = {
   },
 };
 
+/** Resolve verbose strategy-stage channel names like "facebook (Folowise
+ * Bootcamp | Amman)" to a canonical key in CHANNEL_RULES. */
+function canonicalChannelKey(channel: string): string {
+  const c = (channel || "").toLowerCase();
+  for (const k of Object.keys(CHANNEL_RULES)) {
+    if (c.includes(k)) return k;
+  }
+  if (/(^|\s|\()x(\s|\)|$)/.test(c)) return "x";
+  return "blog";
+}
+
 function lint(draft: string, channel: string): ContentItem["lint"] {
-  const rules = CHANNEL_RULES[channel] ?? CHANNEL_RULES.blog;
+  const key = canonicalChannelKey(channel);
+  const rules = CHANNEL_RULES[key];
   const issues: string[] = [];
   let length_ok = true;
   let cta_ok = true;
 
-  if ((channel === "x" || channel === "twitter") && draft.includes("\n---\n")) {
+  if ((key === "x" || key === "twitter") && draft.includes("\n---\n")) {
     const tweets = draft.split("\n---\n");
     tweets.forEach((tw, i) => {
       if (tw.trim().length > rules.max_chars) {
@@ -105,7 +117,7 @@ function lint(draft: string, channel: string): ContentItem["lint"] {
     }
   }
 
-  if (channel === "email") {
+  if (key === "email") {
     const first = draft.split("\n", 1)[0] ?? "";
     if (first.length > 60) {
       issues.push(`Email subject line is ${first.length} chars (max 60).`);
@@ -120,7 +132,7 @@ async function generate(
   item: CalendarItem,
   cachedSystem: ReturnType<typeof cacheBlock>[],
 ): Promise<{ draft: string; usage: TokenUsage }> {
-  const rules = CHANNEL_RULES[item.channel] ?? CHANNEL_RULES.blog;
+  const rules = CHANNEL_RULES[canonicalChannelKey(item.channel)];
   const user = `Calendar item:
 \`\`\`json
 ${JSON.stringify(item, null, 2)}

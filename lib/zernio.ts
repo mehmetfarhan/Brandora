@@ -128,44 +128,34 @@ export async function listPosts(opts?: { limit?: number }): Promise<ZernioPostSu
 }
 
 /**
- * Map a content-stage channel name to one or more Zernio platform identifiers.
- * Our content stage produces one draft per channel; this picks the right
- * Zernio platform string for that draft. Returns null when there's no mapping
- * (e.g. blog/email aren't social platforms).
+ * Map a content-stage channel name to a Zernio platform identifier.
+ *
+ * Tolerant of the verbose channel names the strategy LLM tends to emit,
+ * e.g. "facebook (Folowise Bootcamp | Amman)" or "instagram (@folowise +
+ * @folowise.ar)". Returns null when there's no mapping (blog/email).
  */
 export function channelToZernioPlatform(channel: string): string | null {
-  switch (channel.toLowerCase()) {
-    case "linkedin":
-      return "linkedin";
-    case "x":
-    case "twitter":
-      return "twitter";
-    case "instagram":
-      return "instagram";
-    case "facebook":
-    case "facebook page":
-      return "facebook";
-    case "whatsapp":
-      return "whatsapp";
-    case "telegram":
-      return "telegram";
-    case "threads":
-      return "threads";
-    case "bluesky":
-      return "bluesky";
-    case "tiktok":
-      return "tiktok";
-    case "youtube":
-      return "youtube";
-    case "pinterest":
-      return "pinterest";
-    case "reddit":
-      return "reddit";
-    case "discord":
-      return "discord";
-    default:
-      return null;
-  }
+  const c = (channel || "").toLowerCase();
+  if (!c) return null;
+
+  // Order matters: more specific platform names first so substrings don't
+  // hijack each other (e.g. "facebook" before generic "x").
+  if (c.includes("linkedin")) return "linkedin";
+  if (c.includes("instagram")) return "instagram";
+  if (c.includes("facebook")) return "facebook";
+  if (c.includes("whatsapp")) return "whatsapp";
+  if (c.includes("telegram")) return "telegram";
+  if (c.includes("threads")) return "threads";
+  if (c.includes("bluesky")) return "bluesky";
+  if (c.includes("tiktok") || c.includes("tik tok")) return "tiktok";
+  if (c.includes("youtube")) return "youtube";
+  if (c.includes("pinterest")) return "pinterest";
+  if (c.includes("reddit")) return "reddit";
+  if (c.includes("discord")) return "discord";
+  if (c.includes("twitter")) return "twitter";
+  // "x" alone (or with whitespace/parens around it) maps to twitter.
+  if (/(^|\s|\()x(\s|\)|$)/.test(c)) return "twitter";
+  return null;
 }
 
 /** Best-effort match: pick the first connected, enabled account for a given platform. */
