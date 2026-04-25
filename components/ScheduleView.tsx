@@ -346,7 +346,9 @@ function ChannelRendition({ runId, item }: { runId: string; item: ScheduleEntry 
         ) : (
           <span />
         )}
-        {hasDraft && <PublishButton runId={runId} itemId={item.id} channel={item.channel} />}
+        {hasDraft && (
+          <PublishButton runId={runId} itemId={item.id} channel={item.channel} date={item.date} />
+        )}
       </div>
     </div>
   );

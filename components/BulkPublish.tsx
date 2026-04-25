@@ -5,10 +5,12 @@ import { channelToZernioPlatform } from "@/lib/zernio";
 import type { ZernioAccount } from "@/lib/zernio";
 import type { ContentItem } from "@/lib/types";
 
+type ProgressStatus = "queued" | "publishing" | "ok" | "skip" | "error";
+
 interface ProgressEntry {
   id: string;
   channel: string;
-  status: "queued" | "publishing" | "ok" | "skip" | "error";
+  status: ProgressStatus;
   message?: string;
   postId?: string;
 }
@@ -16,15 +18,16 @@ interface ProgressEntry {
 export interface BulkPublishProps {
   runId: string;
   items: ContentItem[];
-  /** Override the action label, e.g. "publish all on Apr 30" or
-   * "schedule entire calendar". Defaults to "publish all (N)". */
+  /** Action button label override. The eligible count is appended automatically. */
   actionLabel?: string;
-  /** Hide the schedule-per-calendar-date checkbox (when caller has already
-   * decided whether to schedule). */
+  /** Hide the Schedule/Now toggle (caller pre-decides). */
   hideScheduleToggle?: boolean;
-  /** Force scheduleFromCalendar regardless of toggle state. */
+  /** Force the action to schedule, regardless of toggle (overrides default). */
   forceSchedule?: boolean;
-  /** Compact rendering (used inside a day panel). */
+  /** Initial state of the schedule toggle. Defaults to true — most users want
+   * to queue at the calendar date, not publish now. */
+  defaultSchedule?: boolean;
+  /** Compact rendering. */
   compact?: boolean;
 }
 
@@ -34,13 +37,16 @@ export function BulkPublish({
   actionLabel,
   hideScheduleToggle,
   forceSchedule,
+  defaultSchedule = true,
   compact,
 }: BulkPublishProps) {
   const [accounts, setAccounts] = useState<ZernioAccount[] | null>(null);
   const [accountsError, setAccountsError] = useState<string | null>(null);
   const [progress, setProgress] = useState<ProgressEntry[]>([]);
   const [publishing, setPublishing] = useState(false);
-  const [scheduleFromCalendar, setScheduleFromCalendar] = useState(!!forceSchedule);
+  const [scheduleFromCalendar, setScheduleFromCalendar] = useState(
+    forceSchedule !== undefined ? forceSchedule : defaultSchedule,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -148,99 +154,238 @@ export function BulkPublish({
 
   if (accountsError) {
     return (
-      <div className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+      <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
         Couldn&rsquo;t reach Zernio: {accountsError}
       </div>
     );
   }
   if (accounts === null) {
-    return <div className="text-xs text-muted-foreground">checking connected channels…</div>;
+    return (
+      <div className="rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground inline-flex items-center gap-2">
+        <Spinner /> checking connected channels…
+      </div>
+    );
   }
 
   const ok = progress.filter((p) => p.status === "ok").length;
   const errs = progress.filter((p) => p.status === "error").length;
-
-  const labelText = actionLabel
-    ? actionLabel.includes("(") || !actionLabel.includes("…")
-      ? actionLabel.replace(/\(\d+\)\s*$/, "").trim() + ` (${eligible.length})`
-      : actionLabel
-    : `publish all (${eligible.length})`;
+  const labelText = (actionLabel ?? "publish all").replace(/\s*\(\d+\)\s*$/, "");
+  const useSchedule = forceSchedule || scheduleFromCalendar;
+  const buttonText = publishing
+    ? useSchedule
+      ? "scheduling…"
+      : "publishing…"
+    : `${labelText} (${eligible.length})`;
 
   return (
     <div
       className={[
-        "rounded-lg border border-border bg-muted/20",
-        compact ? "p-2.5" : "p-3",
-        "flex flex-wrap items-center gap-3",
+        "rounded-xl border border-border bg-gradient-to-br from-card to-muted/30",
+        compact ? "p-3" : "p-4",
       ].join(" ")}
     >
-      <div className="text-sm">
-        <span className="font-medium">{eligible.length}</span> ready
-        {skipped.length > 0 && (
-          <>
-            {" "}
-            ·{" "}
-            <span
-              className="text-muted-foreground"
-              title="Items whose channel has no connected Zernio account, or that aren't social channels (blog/email)."
-            >
-              {skipped.length} not connected
-            </span>
-          </>
-        )}
-        {progress.length > 0 && (
-          <>
-            {" "}
-            · <span className="text-success">{ok} published</span>
-            {errs > 0 && <> · <span className="text-danger">{errs} failed</span></>}
-          </>
-        )}
+      <div className="flex flex-wrap items-center gap-3">
+        <Stats eligible={eligible.length} skipped={skipped.length} ok={ok} errs={errs} />
+
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          {!hideScheduleToggle && (
+            <ModeToggle value={scheduleFromCalendar} onChange={setScheduleFromCalendar} />
+          )}
+          <button
+            onClick={publishAll}
+            disabled={publishing || eligible.length === 0}
+            className={[
+              "inline-flex items-center gap-1.5 rounded-md font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all",
+              compact ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm",
+              useSchedule
+                ? "bg-info/15 hover:bg-info/25 border border-info/40 text-info"
+                : "bg-accent text-accent-foreground hover:brightness-110 shadow-sm shadow-accent/20",
+            ].join(" ")}
+          >
+            {publishing ? <Spinner /> : useSchedule ? <CalendarIcon /> : <SendIcon />}
+            <span>{buttonText}</span>
+          </button>
+        </div>
       </div>
-      {!hideScheduleToggle && (
-        <label className="text-xs text-muted-foreground inline-flex items-center gap-1.5 ml-auto">
-          <input
-            type="checkbox"
-            checked={scheduleFromCalendar}
-            onChange={(e) => setScheduleFromCalendar(e.target.checked)}
-            className="accent-accent"
-          />
-          schedule for calendar date (instead of publish now)
-        </label>
-      )}
-      <button
-        onClick={publishAll}
-        disabled={publishing || eligible.length === 0}
-        className={[
-          "rounded-md bg-accent text-accent-foreground text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110",
-          compact ? "px-2.5 py-1" : "px-3 py-1.5",
-          hideScheduleToggle ? "ml-auto" : "",
-        ].join(" ")}
-      >
-        {publishing ? "publishing…" : labelText}
-      </button>
+
       {progress.length > 0 && (
-        <ul className="basis-full mt-2 grid sm:grid-cols-2 gap-1 text-xs font-mono">
+        <ul className="mt-3 grid gap-1 text-xs font-mono border-t border-border/60 pt-3">
           {progress.map((p) => (
-            <li
-              key={p.id}
-              className={
-                p.status === "ok"
-                  ? "text-success"
-                  : p.status === "error"
-                  ? "text-danger"
-                  : p.status === "publishing"
-                  ? "text-info"
-                  : p.status === "skip"
-                  ? "text-muted-foreground"
-                  : "text-muted-foreground"
-              }
-            >
-              {p.id} · {p.channel} · {p.status}
-              {p.message ? ` — ${p.message.slice(0, 80)}` : ""}
+            <li key={p.id} className="flex items-center gap-2">
+              <StatusDot status={p.status} />
+              <span className="text-muted-foreground">{p.id}</span>
+              <span className="text-foreground/80">{p.channel}</span>
+              <span className={statusClass(p.status)}>{p.status}</span>
+              {p.message && (
+                <span className="text-muted-foreground truncate">— {p.message}</span>
+              )}
             </li>
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+function Stats({
+  eligible,
+  skipped,
+  ok,
+  errs,
+}: {
+  eligible: number;
+  skipped: number;
+  ok: number;
+  errs: number;
+}) {
+  return (
+    <div className="text-sm flex items-center gap-2 flex-wrap">
+      <span className="font-medium">{eligible}</span>
+      <span className="text-muted-foreground">ready</span>
+      {skipped > 0 && (
+        <>
+          <span className="text-muted-foreground/40">·</span>
+          <span
+            className="text-muted-foreground"
+            title="Items whose channel has no connected Zernio account, or that aren't social channels (blog/email)."
+          >
+            {skipped} not connected
+          </span>
+        </>
+      )}
+      {ok > 0 && (
+        <>
+          <span className="text-muted-foreground/40">·</span>
+          <span className="text-success font-medium">{ok} done</span>
+        </>
+      )}
+      {errs > 0 && (
+        <>
+          <span className="text-muted-foreground/40">·</span>
+          <span className="text-danger font-medium">{errs} failed</span>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ModeToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Publish mode"
+      className="inline-flex items-center rounded-md border border-border bg-card p-0.5 text-xs font-medium"
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={value}
+        onClick={() => onChange(true)}
+        className={[
+          "inline-flex items-center gap-1 rounded-[5px] px-2.5 py-1 transition-colors",
+          value
+            ? "bg-info/15 text-info"
+            : "text-muted-foreground hover:text-foreground",
+        ].join(" ")}
+        title="Queue on Zernio at the calendar date"
+      >
+        <CalendarIcon className="h-3 w-3" />
+        Schedule
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={!value}
+        onClick={() => onChange(false)}
+        className={[
+          "inline-flex items-center gap-1 rounded-[5px] px-2.5 py-1 transition-colors",
+          !value
+            ? "bg-accent/20 text-accent"
+            : "text-muted-foreground hover:text-foreground",
+        ].join(" ")}
+        title="Publish immediately on Zernio"
+      >
+        <SendIcon className="h-3 w-3" />
+        Now
+      </button>
+    </div>
+  );
+}
+
+function StatusDot({ status }: { status: ProgressStatus }) {
+  const cls =
+    status === "ok"
+      ? "bg-success"
+      : status === "error"
+      ? "bg-danger"
+      : status === "publishing"
+      ? "bg-accent live-dot"
+      : status === "skip"
+      ? "bg-muted-foreground/40"
+      : "bg-border";
+  return <span className={`inline-block h-2 w-2 rounded-full ${cls}`} />;
+}
+
+function statusClass(status: ProgressStatus): string {
+  switch (status) {
+    case "ok":
+      return "text-success";
+    case "error":
+      return "text-danger";
+    case "publishing":
+      return "text-accent";
+    case "skip":
+      return "text-muted-foreground";
+    default:
+      return "text-muted-foreground";
+  }
+}
+
+function Spinner() {
+  return (
+    <svg
+      className="h-3.5 w-3.5 animate-spin"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+    >
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  );
+}
+
+function CalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className ?? "h-3.5 w-3.5"}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
+
+function SendIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className ?? "h-3.5 w-3.5"}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M22 2 11 13" />
+      <path d="m22 2-7 20-4-9-9-4 20-7Z" />
+    </svg>
   );
 }
