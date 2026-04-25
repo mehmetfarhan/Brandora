@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { ArtifactView } from "./ArtifactView";
 import { EventStream } from "./EventStream";
+import { LogoutButton } from "./LogoutButton";
 import { StageTracker } from "./StageTracker";
 import type { RunEvent, RunState, StageName } from "@/lib/types";
 
@@ -143,7 +144,7 @@ export function RunView({ initial }: { initial: RunState }) {
     <main className="flex flex-col">
       <header className="px-6 sm:px-10 py-5 flex items-center justify-between border-b border-border bg-card/40 backdrop-blur sticky top-0 z-10">
         <div className="flex items-center gap-3 min-w-0">
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">←</Link>
+          <Link href="/app" className="text-sm text-muted-foreground hover:text-foreground">←</Link>
           <span className={`inline-block h-2 w-2 rounded-full ${status === "running" ? "bg-accent live-dot" : status === "completed" ? "bg-success" : "bg-danger"}`} />
           <div className="truncate">
             <div className="font-semibold tracking-tight truncate">{s.state.input.name}</div>
@@ -153,6 +154,12 @@ export function RunView({ initial }: { initial: RunState }) {
         <div className="flex items-center gap-3">
           <Tokens state={s.state} />
           <Link
+            href="/app"
+            className="text-xs font-medium text-muted-foreground hover:text-foreground"
+          >
+            home
+          </Link>
+          <Link
             href="/channels"
             className="text-xs font-medium text-muted-foreground hover:text-foreground"
           >
@@ -160,6 +167,7 @@ export function RunView({ initial }: { initial: RunState }) {
           </Link>
           {status === "failed" && <ResumeButton runId={s.state.id} />}
           <div className={`text-xs font-mono uppercase ${headerStatus.color}`}>{headerStatus.label}</div>
+          <LogoutButton className="rounded-md border border-border bg-card hover:border-accent/60 text-xs font-medium px-2.5 py-1.5" />
         </div>
       </header>
 

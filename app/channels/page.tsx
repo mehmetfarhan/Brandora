@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LogoutButton } from "@/components/LogoutButton";
 import { listAccounts, listPosts, listProfiles } from "@/lib/zernio";
 
 export const dynamic = "force-dynamic";
@@ -50,19 +51,22 @@ export default async function ChannelsPage() {
     <main className="flex flex-col">
       <header className="px-6 sm:px-10 py-6 flex items-center justify-between border-b border-border bg-card/40 backdrop-blur sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link href="/app" className="text-sm text-muted-foreground hover:text-foreground">
             ←
           </Link>
           <span className="font-semibold tracking-tight">Channels &amp; Publishing</span>
         </div>
-        <a
-          href="https://zernio.com/dashboard"
-          target="_blank"
-          rel="noreferrer"
-          className="text-xs font-medium text-accent hover:underline underline-offset-2"
-        >
-          open Zernio dashboard ↗
-        </a>
+        <div className="flex items-center gap-3">
+          <a
+            href="https://zernio.com/dashboard"
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs font-medium text-accent hover:underline underline-offset-2"
+          >
+            open Zernio dashboard ↗
+          </a>
+          <LogoutButton className="rounded-md border border-border bg-card hover:border-accent/60 text-xs font-medium px-2.5 py-1.5" />
+        </div>
       </header>
 
       <section className="px-6 sm:px-10 py-8 max-w-6xl mx-auto w-full">

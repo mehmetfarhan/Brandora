@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { BusinessForm } from "@/components/BusinessForm";
 
 const PHASES = [
   {
@@ -47,7 +46,6 @@ export default function Home() {
       <Hero />
       <PhaseGrid />
       <RubricBlock />
-      <FormBlock />
       <Footer />
     </main>
   );
@@ -58,14 +56,18 @@ function Header() {
     <header className="px-6 sm:px-10 py-6 flex items-center justify-between">
       <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
         <span className="inline-block h-2.5 w-2.5 rounded-full bg-accent live-dot" />
-        <span>Pipeline</span>
+        <span>Brandora</span>
         <span className="text-muted-foreground font-normal text-sm">/ The Agent Lab</span>
       </Link>
       <nav className="hidden sm:flex items-center gap-5 text-sm text-muted-foreground">
         <a href="#how" className="hover:text-foreground">How it works</a>
         <a href="#rubric" className="hover:text-foreground">Why it scores</a>
-        <a href="#run" className="hover:text-foreground">Run it</a>
-        <Link href="/channels" className="hover:text-foreground">Channels</Link>
+        <Link
+          href="/login"
+          className="rounded-md border border-accent/40 bg-accent/15 hover:bg-accent/25 text-accent px-3 py-1.5 text-xs font-semibold"
+        >
+          Sign in →
+        </Link>
       </nav>
     </header>
   );
@@ -84,12 +86,12 @@ function Hero() {
         calendar, and write channel-native content — verifying its own work at every step.
       </p>
       <div className="mt-8 flex flex-wrap gap-3">
-        <a
-          href="#run"
+        <Link
+          href="/login"
           className="inline-flex items-center justify-center gap-2 rounded-md bg-accent text-accent-foreground px-5 py-2.5 text-sm font-semibold hover:brightness-110"
         >
-          Run a live demo →
-        </a>
+          Sign in to run →
+        </Link>
         <a
           href="#how"
           className="inline-flex items-center justify-center gap-2 rounded-md border border-border bg-card/60 px-5 py-2.5 text-sm hover:border-accent/60"
@@ -142,21 +144,6 @@ function RubricBlock() {
             </div>
           </div>
         ))}
-      </div>
-    </section>
-  );
-}
-
-function FormBlock() {
-  return (
-    <section id="run" className="px-6 sm:px-10 pb-24 max-w-3xl mx-auto w-full">
-      <h2 className="text-2xl font-semibold tracking-tight">Run the agent</h2>
-      <p className="mt-2 text-muted-foreground">
-        Enter a business and hit start. You&rsquo;ll be redirected to the live run view where the
-        whole pipeline streams in real-time.
-      </p>
-      <div className="mt-6">
-        <BusinessForm />
       </div>
     </section>
   );
